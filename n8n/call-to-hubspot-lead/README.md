@@ -2,7 +2,7 @@
 
 When a call comes in, this creates the lead in HubSpot for you. Your phone system (3CX, Twilio, or any setup that can fire a webhook on a call) sends the caller's number, n8n looks it up in HubSpot, and either attaches a new deal to the existing contact or creates a fresh contact + deal. No more typing callers into the CRM by hand.
 
-The dedupe matters: a repeat caller doesn't become a duplicate contact, they get a new deal on the record you already have.
+Removing duplicates is important: a repeat caller doesn't become a duplicate contact, they get a new deal on the record you already have.
 
 ## How it works
 
