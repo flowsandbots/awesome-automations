@@ -1,0 +1,135 @@
+{
+ "name": "Inbound call to HubSpot lead",
+ "nodes": [
+  {
+   "id": "d1000000-0000-4000-8000-000000000001",
+   "name": "Read me first",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [120, 60],
+   "parameters": {
+    "content": "## Inbound call to HubSpot lead\nA phone system (3CX, or any PBX that can fire a webhook) POSTs the caller's number. This looks the number up in HubSpot and either attaches a new deal to the existing contact, or creates a fresh contact + deal.\n\nSetup:\n1. HubSpot: make a free private app (Settings > Integrations > Private Apps) with scopes crm.objects.contacts.read/write and crm.objects.deals.read/write. Copy the token\n2. Attach it as a 'HubSpot App Token' credential on the three HTTP nodes\n3. Copy this workflow's production webhook URL (from the Incoming call node) into your phone system's webhook / call-event setting\n\nExpected POST body:\n{ \"caller_number\": \"+15551234567\", \"caller_name\": \"Jane Doe\" }\ncaller_name is optional.\n\nTesting without a phone system: see the README, you just POST that JSON to the webhook yourself.",
+    "width": 460,
+    "height": 380,
+    "color": 4
+   }
+  },
+  {
+   "id": "d1000000-0000-4000-8000-000000000002",
+   "name": "Incoming call",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [640, 320],
+   "webhookId": "d1000000-0000-4000-8000-00000000f001",
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "inbound-call",
+    "responseMode": "onReceived",
+    "responseCode": 200,
+    "options": {}
+   },
+   "notes": "Point your phone system's call webhook here. Body needs caller_number (E.164 like +15551234567) and optional caller_name."
+  },
+  {
+   "id": "d1000000-0000-4000-8000-000000000003",
+   "name": "Search contact by phone",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [880, 320],
+   "parameters": {
+    "method": "POST",
+    "url": "https://api.hubapi.com/crm/v3/objects/contacts/search",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "hubspotAppToken",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={\n  \"filterGroups\": [{ \"filters\": [{ \"propertyName\": \"phone\", \"operator\": \"EQ\", \"value\": \"{{ $json.body.caller_number }}\" }] }],\n  \"properties\": [\"phone\", \"firstname\", \"lastname\"],\n  \"limit\": 1\n}",
+    "options": {}
+   },
+   "notes": "Dedupe: finds an existing contact with this phone number. Returns total + results[]."
+  },
+  {
+   "id": "d1000000-0000-4000-8000-000000000004",
+   "name": "Contact exists?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [1140, 320],
+   "parameters": {
+    "conditions": {
+     "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2},
+     "conditions": [
+      {"id": "cond1", "leftValue": "={{ $json.total }}", "rightValue": 0, "operator": {"type": "number", "operation": "gt"}}
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "d1000000-0000-4000-8000-000000000005",
+   "name": "Create deal (existing contact)",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [1440, 200],
+   "parameters": {
+    "method": "POST",
+    "url": "https://api.hubapi.com/crm/v3/objects/deals",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "hubspotAppToken",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={\n  \"properties\": {\n    \"dealname\": \"Inbound call | {{ $('Incoming call').item.json.body.caller_number }}\"\n  },\n  \"associations\": [{\n    \"to\": { \"id\": \"{{ $json.results[0].id }}\" },\n    \"types\": [{ \"associationCategory\": \"HUBSPOT_DEFINED\", \"associationTypeId\": 3 }]\n  }]\n}",
+    "options": {}
+   },
+   "notes": "Existing caller: attach a new deal to their contact. associationTypeId 3 = deal to contact."
+  },
+  {
+   "id": "d1000000-0000-4000-8000-000000000006",
+   "name": "Create contact",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [1440, 440],
+   "parameters": {
+    "method": "POST",
+    "url": "https://api.hubapi.com/crm/v3/objects/contacts",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "hubspotAppToken",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={\n  \"properties\": {\n    \"phone\": \"{{ $('Incoming call').item.json.body.caller_number }}\",\n    \"firstname\": \"{{ $('Incoming call').item.json.body.caller_name || 'Inbound Caller' }}\",\n    \"hs_lead_status\": \"NEW\"\n  }\n}",
+    "options": {}
+   },
+   "notes": "New caller: create the contact first, then the deal below."
+  },
+  {
+   "id": "d1000000-0000-4000-8000-000000000007",
+   "name": "Create deal (new contact)",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [1700, 440],
+   "parameters": {
+    "method": "POST",
+    "url": "https://api.hubapi.com/crm/v3/objects/deals",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "hubspotAppToken",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={\n  \"properties\": {\n    \"dealname\": \"Inbound call | {{ $('Incoming call').item.json.body.caller_number }}\"\n  },\n  \"associations\": [{\n    \"to\": { \"id\": \"{{ $json.id }}\" },\n    \"types\": [{ \"associationCategory\": \"HUBSPOT_DEFINED\", \"associationTypeId\": 3 }]\n  }]\n}",
+    "options": {}
+   },
+   "notes": "Creates the deal and links it to the contact we just made."
+  }
+ ],
+ "connections": {
+  "Incoming call": {"main": [[{"node": "Search contact by phone", "type": "main", "index": 0}]]},
+  "Search contact by phone": {"main": [[{"node": "Contact exists?", "type": "main", "index": 0}]]},
+  "Contact exists?": {"main": [
+    [{"node": "Create deal (existing contact)", "type": "main", "index": 0}],
+    [{"node": "Create contact", "type": "main", "index": 0}]
+  ]},
+  "Create contact": {"main": [[{"node": "Create deal (new contact)", "type": "main", "index": 0}]]}
+ },
+ "settings": {"executionOrder": "v1"},
+ "active": false,
+ "pinData": {}
+}
