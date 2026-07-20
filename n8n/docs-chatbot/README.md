@@ -18,7 +18,7 @@ Two workflows:
 
 ![chat workflow answering a question, execution logs showing the knowledge base search](screenshots/chat-workflow.png)
 
-## the stack, all free
+## The stack, all free
 
 - n8n, self-hosted or cloud
 - Supabase free tier for the vector database
@@ -27,7 +27,7 @@ Two workflows:
 
 No card needed anywhere.
 
-## setup
+## Setup Time
 
 Maybe 20 minutes.
 
@@ -37,25 +37,25 @@ Make a free project at supabase.com. Open the SQL editor, paste in [supabase-set
 
 Grab two things from Project Settings > API: the project URL and the service_role key.
 
-### 2. import both workflows
+### 2. Import both workflows
 
 n8n > Workflows > Import from file, once per json.
 
-### 3. credentials
+### 3. Credentials
 
 - Supabase: new Supabase API credential in n8n with the URL and service_role key. Both vector store nodes use it
 - Gemini: free key from aistudio.google.com, saved as Google Gemini(PaLM) API. Both embeddings nodes use it. If you already set up my [ai-bill-extractor](../ai-bill-extractor/), it's the same credential
 - OpenRouter: free account at openrouter.ai, create an API key, new OpenRouter credential in n8n
 
-### 4. feed it documents
+### 4. Feed it documents
 
 Open the ingest workflow, click the form trigger, open the form URL. Upload your files (.md, .txt, .pdf) and submit. Check the executions tab, green means your docs are in Supabase now. There's a [sample-docs/faq.md](sample-docs/faq.md) with fake company FAQs if you just want to test.
 
-### 5. talk to it
+### 5. Talk to it
 
 Open the chat workflow and use the chat panel in the editor. Ask something your docs answer, then ask something they don't. It should nail the first and admit the second. If it hallucinates, tighten the system message in the Agent node.
 
-### 6. put it on your site
+### 6. Put it on your site
 
 Activate the chat workflow, copy the production webhook URL from the chat trigger, paste it into [embed-snippet.html](embed-snippet.html) and drop that before the closing body tag on your site. You get the standard chat bubble bottom right.
 
@@ -63,7 +63,7 @@ Before going live, change allowed origins in the chat trigger options from * to 
 
 Building your own widget instead? The trigger is just a webhook, see the comment at the bottom of the embed snippet.
 
-## things that will bite you
+## Things that will bite you
 
 - The embedding model at ingest and at chat MUST match. Both workflows ship with gemini-embedding-001. Change one, change both, and re-ingest
 - The SQL sets vectors to 3072 dimensions for that model. A different embedding model means a different dimension, edit the sql and rebuild the table
@@ -72,6 +72,6 @@ Building your own widget instead? The trigger is just a webhook, see the comment
 - Re-uploading the same file duplicates its chunks. Run `truncate table documents;` in Supabase first if you're re-ingesting
 - Memory is in-memory buffer by default, conversations reset when n8n restarts. Swap the Memory node for Postgres Chat Memory pointed at your Supabase db if that matters to you
 
-## license
+## License
 
 [MIT](../../LICENSE)
