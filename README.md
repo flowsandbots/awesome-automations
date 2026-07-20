@@ -1,4 +1,4 @@
-# automations
+# awesome-automations
 
 n8n workflows and PowerShell scripts I actually use. Everything runs self-hosted and on free tiers where I could manage it.
 
