@@ -12,10 +12,10 @@ Each folder has a workflow.json you can import (n8n > Workflows > Import from fi
 
 [docs-chatbot](n8n/docs-chatbot/) is a chat widget for your website that answers from your own docs. Upload your FAQs through a form, embed one snippet, and visitors get answers grounded in your content. Supabase vector store, OpenRouter free models, Gemini free embeddings. Also fully free to run.
 
-## powershell scripts
+## Powershell scripts
 
 [make-blueprint-exporter](powershell/make-blueprint-exporter/) downloads every scenario blueprint in a Make.com team as json files. I wrote it for my own migration. Works fine as a plain backup tool too.
 
-## license
+## License
 
 MIT. Do what you want with it, credit is nice but not required.
