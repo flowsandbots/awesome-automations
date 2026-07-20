@@ -57,11 +57,39 @@ Open the chat workflow and use the chat panel in the editor. Ask something your 
 
 ### 6. Put it on your site
 
-Activate the chat workflow, copy the production webhook URL from the chat trigger, paste it into [embed-snippet.html](embed-snippet.html) and drop that before the closing body tag on your site. You get the standard chat bubble bottom right.
+This is the part everyone asks about, so step by step.
 
-Before going live, change allowed origins in the chat trigger options from * to your actual domain. Otherwise any site can use your bot and burn your quota.
+First, activate the workflow. Top right of the chat workflow there's a Publish button (or an Active toggle depending on your n8n version). Click it. Until you do this, the bot only works inside the editor.
 
-Building your own widget instead? The trigger is just a webhook, see the comment at the bottom of the embed snippet.
+Second, find your chat URL. Double click the **Chat trigger** node. Because it's set to public, the panel shows a field called **Chat URL**. It looks like this:
+
+```
+https://your-n8n-server.com/webhook/abc123-def456/chat
+```
+
+The abc123-def456 part is unique to your workflow. Copy the whole thing. Careful: there are two tabs, Test and Production. You want the **production** one, the test URL only works while the editor is open.
+
+Third, paste it into the snippet. Open [embed-snippet.html](embed-snippet.html), find this line:
+
+```js
+webhookUrl: 'YOUR_CHAT_TRIGGER_WEBHOOK_URL',
+```
+
+and replace YOUR_CHAT_TRIGGER_WEBHOOK_URL with the URL you copied, keeping the quotes:
+
+```js
+webhookUrl: 'https://your-n8n-server.com/webhook/abc123-def456/chat',
+```
+
+Fourth, put the snippet on your site. Open your website's HTML and paste the whole snippet (the `<link>` and `<script>` block) just before the closing `</body>` tag, at the bottom of the page. If you use WordPress, a "custom HTML" footer widget or a header/footer plugin does the same job. Wix/Squarespace have an "embed code" or "custom code" setting under site settings.
+
+That's it. Reload your site and there's a chat bubble in the bottom right corner, talking to your bot. No backend code on the website side, the snippet just points the widget at your n8n URL.
+
+Don't have a website yet and just want to see it work? Paste the snippet into a text file, save it as test.html, double click it. The bubble works from a local file too.
+
+Before going live for real, change **allowed origins** in the chat trigger options from * to your actual domain (like https://yoursite.com). Otherwise anyone can embed your bot on their site and burn through your quota.
+
+Building your own chat UI instead of using the widget? The trigger is just a webhook, see the comment at the bottom of the embed snippet.
 
 ## Things that will bite you
 
