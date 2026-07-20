@@ -1,0 +1,25 @@
+Send this email to yourself to test the workflow.
+
+Subject: Utility Bill Test | July 2026 | A/C 1023456789
+
+Body:
+---
+Dear Customer,
+
+Please find your utility bill for the month of July-2026 for the
+Account number : 1023456789 related to premise number 300123456.
+
+Total Amount Due: USD 486.50
+Due Before: 04/08/2026
+
+VIEW BILL: https://example.com/bills/1023456789/july-2026.pdf
+
+Thank you for using our services.
+---
+
+Expected extraction:
+  Account_No:     1023456789
+  Billing_Period: July-2026
+  Due_Date:       04/08/2026
+  Amount_Due:     USD 486.50
+  Bill_URL:       https://example.com/bills/1023456789/july-2026.pdf
