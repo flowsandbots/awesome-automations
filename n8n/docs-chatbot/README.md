@@ -2,12 +2,21 @@
 
 A chat widget for your website that answers questions from your own documents. Upload your FAQs or docs once, drop one snippet on your site, done. The whole stack runs on free tiers.
 
+![demo page with the chat widget answering a pricing question from the ingested FAQ](screenshots/demo.png)
+
+That's a plain html page talking to this workflow. The price it quotes comes from the sample FAQ, not the model's imagination.
+
 This is RAG (retrieval augmented generation) if you want the buzzword: your files get chunked and embedded into a Supabase vector table, and when a visitor asks something, the bot searches those chunks and answers from them instead of inventing things. If the answer isn't in your docs it says so.
 
 Two workflows:
 
 1. ingest-workflow.json gives you an upload form. Files in, vectors out.
-2. chat-workflow.json is the bot itself. Chat trigger, agent, knowledge base search, memory.
+
+![ingest workflow: upload form to Supabase vector store with Gemini embeddings](screenshots/ingest-workflow.png)
+
+2. chat-workflow.json is the bot itself. Chat trigger, agent, knowledge base search, memory. Here it is answering from the sample FAQ, with the knowledge base search visible in the logs:
+
+![chat workflow answering a question, execution logs showing the knowledge base search](screenshots/chat-workflow.png)
 
 ## the stack, all free
 
