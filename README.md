@@ -10,6 +10,8 @@ Each folder has a workflow.json you can import (n8n > Workflows > Import from fi
 
 [ai-bill-extractor](n8n/ai-bill-extractor/) watches Gmail for bill emails, pulls out the account number, due date, amount and the bill link with AI, then writes a row to Google Sheets. No parsing rules to maintain, the model reads the email like you would. Runs on the Gemini API free tier so it costs nothing.
 
+[docs-chatbot](n8n/docs-chatbot/) is a chat widget for your website that answers from your own docs. Upload your FAQs through a form, embed one snippet, and visitors get answers grounded in your content. Supabase vector store, OpenRouter free models, Gemini free embeddings. Also fully free to run.
+
 ## powershell scripts
 
 [make-blueprint-exporter](powershell/make-blueprint-exporter/) downloads every scenario blueprint in a Make.com team as json files. I wrote it for my own migration. Works fine as a plain backup tool too.

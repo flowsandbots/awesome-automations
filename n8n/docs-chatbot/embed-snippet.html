@@ -1,0 +1,26 @@
+<!-- docs-chatbot website widget
+     Paste before </body> on your site. Replace the webhookUrl with the one
+     shown in your Chat trigger node (the production URL, not the test one).
+     This is n8n's own open source widget (@n8n/chat, MIT licensed). -->
+
+<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
+<script type="module">
+  import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+
+  createChat({
+    webhookUrl: 'YOUR_CHAT_TRIGGER_WEBHOOK_URL',
+    initialMessages: ['Hi, ask me anything about our docs.'],
+    i18n: {
+      en: {
+        title: 'Help',
+        subtitle: '',
+        inputPlaceholder: 'Type your question...'
+      }
+    }
+  });
+</script>
+
+<!-- Building your own UI instead? It's just a webhook. POST this to the same url:
+     { "chatInput": "the user question", "sessionId": "anything-stable-per-visitor" }
+     and render the "output" field from the response. Keep sessionId stable or the
+     bot forgets the conversation between messages. -->

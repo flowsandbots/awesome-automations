@@ -1,0 +1,163 @@
+{
+ "name": "docs-chatbot: 1. ingest documents",
+ "nodes": [
+  {
+   "id": "c1000000-0000-4000-8000-000000000001",
+   "name": "Read me first",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    180,
+    120
+   ],
+   "parameters": {
+    "content": "## docs-chatbot ingest\nUpload files here, they get chunked, embedded and stored in Supabase.\n\nBefore first run:\n1. Run supabase-setup.sql in your Supabase project (SQL editor)\n2. Attach a Supabase credential to the vector store node (project URL + service_role key, both under Project Settings > API)\n3. Attach your free Gemini API key to the embeddings node\n\nThen open the form URL from the trigger node, upload your .md/.txt/.pdf files and submit. Re-running with the same files creates duplicates, clear the documents table first if you re-ingest.",
+    "width": 400,
+    "height": 320,
+    "color": 4
+   }
+  },
+  {
+   "id": "c1000000-0000-4000-8000-000000000002",
+   "name": "Upload form",
+   "type": "n8n-nodes-base.formTrigger",
+   "typeVersion": 2.2,
+   "position": [
+    640,
+    300
+   ],
+   "webhookId": "c1000000-0000-4000-8000-00000000f001",
+   "parameters": {
+    "formTitle": "Add documents to the chatbot",
+    "formDescription": "Upload the files the bot should know. Markdown, text or PDF.",
+    "formFields": {
+     "values": [
+      {
+       "fieldLabel": "Documents",
+       "fieldType": "file",
+       "multipleFiles": true,
+       "acceptFileTypes": ".md,.txt,.pdf",
+       "requiredField": true
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "c1000000-0000-4000-8000-000000000003",
+   "name": "Store in Supabase",
+   "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+   "typeVersion": 1.1,
+   "position": [
+    920,
+    300
+   ],
+   "parameters": {
+    "mode": "insert",
+    "tableName": {
+     "__rl": true,
+     "value": "documents",
+     "mode": "list",
+     "cachedResultName": "documents"
+    },
+    "options": {
+     "queryName": "match_documents"
+    }
+   }
+  },
+  {
+   "id": "c1000000-0000-4000-8000-000000000004",
+   "name": "Load files",
+   "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+   "typeVersion": 1,
+   "position": [
+    1000,
+    520
+   ],
+   "parameters": {
+    "dataType": "binary",
+    "options": {}
+   }
+  },
+  {
+   "id": "c1000000-0000-4000-8000-000000000005",
+   "name": "Split into chunks",
+   "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+   "typeVersion": 1,
+   "position": [
+    1080,
+    720
+   ],
+   "parameters": {
+    "chunkSize": 1000,
+    "chunkOverlap": 150
+   }
+  },
+  {
+   "id": "c1000000-0000-4000-8000-000000000006",
+   "name": "Gemini embeddings",
+   "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+   "typeVersion": 1,
+   "position": [
+    820,
+    520
+   ],
+   "parameters": {
+    "modelName": "models/gemini-embedding-001"
+   },
+   "notes": "Free Gemini key. 3072 dimensions, matches the SQL setup. Must be the same model in both workflows"
+  }
+ ],
+ "connections": {
+  "Upload form": {
+   "main": [
+    [
+     {
+      "node": "Store in Supabase",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Load files": {
+   "ai_document": [
+    [
+     {
+      "node": "Store in Supabase",
+      "type": "ai_document",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Split into chunks": {
+   "ai_textSplitter": [
+    [
+     {
+      "node": "Load files",
+      "type": "ai_textSplitter",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Gemini embeddings": {
+   "ai_embedding": [
+    [
+     {
+      "node": "Store in Supabase",
+      "type": "ai_embedding",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false,
+ "pinData": {}
+}
