@@ -17,6 +17,10 @@ phone system --webhook--> n8n
          to the contact         then create deal
 ```
 
+Same thing, as it actually looks in n8n:
+
+![workflow canvas: incoming call webhook, HubSpot search, branch on contact exists, create deal or create contact + deal](screenshots/workflow-canvas.png)
+
 ## The stack, all free
 
 - n8n, self-hosted or cloud
