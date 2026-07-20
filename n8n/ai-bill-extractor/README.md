@@ -1,73 +1,83 @@
-# 📧 AI Utility Bill Extractor for n8n
+# AI utility bill extractor
 
-Turn bill emails into spreadsheet rows automatically — **Gmail → free AI extraction → Google Sheets**, on a 100% free stack.
+Gets bill emails out of your inbox and into a spreadsheet without you touching them. Gmail trigger, AI extraction, Google Sheets. The whole stack is free.
 
-Every time a utility/service bill lands in your inbox, this workflow reads it, extracts the key fields with AI (no regex, no per-provider parsing rules), and appends a row to a Google Sheet:
+When a bill lands in Gmail, the workflow reads it, has the AI pull out the fields, and appends a row to your sheet:
 
-| Account_No | Billing_Period | Due_Date | Amount_Due | Bill_URL | Delivered_To |
-|---|---|---|---|---|---|
-| 1023456789 | July-2026 | 04/08/2026 | USD 486.50 | https://… | you@gmail.com |
+Account_No, Billing_Period, Due_Date, Amount_Due, Bill_URL, Delivered_To
 
-Works with any provider — electricity, water, internet, phone — because the AI finds the fields regardless of the email's layout. Just point the Gmail filter at your provider's emails.
+I built this because I was tracking utility bills across several mailboxes by hand. Regex parsers kept breaking every time a provider changed their email template. An LLM doesn't care about the template, it just reads the email. That's the whole trick.
 
-## Why this instead of regex parsers?
+Works for any provider (electricity, water, internet, phone) since there are no per-provider rules. You point the Gmail filter at the right sender or subject and that's it.
 
-Traditional email parsing breaks every time a provider redesigns their template. An LLM reads the email like a human does. This template uses Google's **Gemma** model via the Gemini API free tier — no credit card, $0.
+## the stack
 
-## Stack
+- n8n, self-hosted or cloud
+- Gmail
+- Google Gemini API on the free tier (Gemma model, no card needed)
+- Google Sheets
 
-- [n8n](https://n8n.io) (self-hosted or cloud)
-- Gmail (free)
-- Google Gemini API — Gemma model, free tier, no card required
-- Google Sheets (free)
+## setup
 
-## Setup (~15 min)
+Takes maybe 15 minutes, most of it in Google Cloud Console.
 
-### 1. Import the workflow
-n8n → Workflows → **Import from File** → `workflow.json`
+### 1. import the workflow
 
-### 2. Google Cloud project (one-time, powers Gmail + Sheets)
-1. [console.cloud.google.com](https://console.cloud.google.com) → New project
-2. **APIs & Services → Library** → enable **Gmail API**, **Google Sheets API**, and **Google Drive API** (Drive is needed for n8n's spreadsheet picker)
-3. **OAuth consent screen** → External → add yourself as a **test user**
-4. **Clients → Create client** → type **Web application** → under *Authorized redirect URIs*, paste the OAuth Redirect URL shown in n8n's credential dialog (`https://YOUR-N8N/rest/oauth2-credential/callback`) → copy the Client ID + Secret
+n8n > Workflows > Import from file > workflow.json
 
-### 3. Credentials in n8n
-- **Gmail Trigger** node → create a *Gmail OAuth2* credential → paste Client ID/Secret → Sign in with Google (click through the "unverified app" warning — it's your own app)
-- **Append to Sheet** node → create a *Google Sheets OAuth2* credential → same Client ID/Secret → sign in
-- **Extract with AI** node → get a free API key at [aistudio.google.com](https://aistudio.google.com) → create a *Google Gemini(PaLM) API* credential
+### 2. Google Cloud project
 
-### 4. The spreadsheet
-Create a Google Sheet with a tab named `Bills` and these headers in row 1:
+One project covers both Gmail and Sheets.
+
+1. Go to console.cloud.google.com and create a project
+2. APIs & Services > Library. Enable Gmail API, Google Sheets API and Google Drive API (Drive is what n8n's spreadsheet picker uses, you get a 403 without it, ask me how I know)
+3. OAuth consent screen > External. Add yourself as a test user
+4. Clients > Create client > Web application. Under authorized redirect URIs paste the redirect URL n8n shows in the credential dialog, it looks like `https://YOUR-N8N/rest/oauth2-credential/callback`. Then copy the client id and secret
+
+### 3. credentials in n8n
+
+- Gmail Trigger node: new Gmail OAuth2 credential with the client id/secret, sign in with Google. You'll hit an "unverified app" warning since it's your own app, click through it
+- Append to Sheet node: same client id/secret, new Google Sheets OAuth2 credential
+- Extract with AI node: grab a free API key at aistudio.google.com and save it as a Google Gemini(PaLM) API credential
+
+### 4. the spreadsheet
+
+Make a Google Sheet with a tab called `Bills` and these headers in row 1:
 
 ```
 Account_No | Billing_Period | Due_Date | Amount_Due | Bill_URL | Delivered_To
 ```
 
-Select it in the **Append to Sheet** node.
+Pick it in the Append to Sheet node once the credential is attached.
 
-### 5. Point it at your bills
-In the **Gmail Trigger** node, set the search filter to match your provider, e.g.:
+### 5. point it at your bills
+
+In the Gmail Trigger, set the search to match your provider:
 
 ```
-from:billing@yourprovider.com             # specific sender
-subject:"Utility Bill"                      # or by subject
+from:billing@yourprovider.com
 ```
 
-### 6. Test
-Send yourself the sample email from [`sample-bill-email.txt`](sample-bill-email.txt), set the filter to `subject:"Utility Bill Test"`, and click **Execute Workflow**. A row should appear in your sheet. Then set the filter back to your real provider and **activate** the workflow.
+or a subject match if the sender varies.
 
-## Model notes (as of mid-2026)
+### 6. test it
 
-- The workflow ships with `gemma-4-26b-a4b-it` — the model with a real free tier on new Gemini API keys. Older `gemini-2.x` models return `quota: 0` on new keys, and `gemini-2.5` is retired for new users.
-- Gemma ignores the API's JSON mode and wraps its answer in a ```json fence — the **Fields** node handles this by extracting and parsing the fenced JSON, so no changes needed.
-- If you have a paid OpenAI/Anthropic key, you can swap the AI node for an OpenAI/Anthropic node; the prompt works as-is (cost ≈ $0.0003/bill on gpt-4o-mini).
-- Occasional "Service unavailable / high demand" errors on the free tier are normal; the AI node retries automatically (4 tries, 5 s apart).
+Send yourself the email from [sample-bill-email.txt](sample-bill-email.txt), set the filter to `subject:"Utility Bill Test"`, hit Execute Workflow. A row should show up in the sheet. Then set the filter back to the real provider and activate.
 
-## Adapting to other documents
+## model notes (mid 2026)
 
-The pattern generalizes to any "email → structured data" task: invoices, receipts, order confirmations, booking confirmations. Edit the field list in the **Extract with AI** prompt and the **Fields** node, and match the columns in your sheet.
+The workflow ships with `gemma-4-26b-a4b-it` because that's what actually has free quota on a new Gemini API key right now. The gemini-2.x models return quota 0 for new keys and 2.5 got retired for new users. Found that out the hard way.
 
-## License
+Gemma also ignores the API's json output mode and wraps its answer in a json code fence. The Fields node already deals with this (it fishes the json out of the text), so nothing to fix, just don't be surprised when you look at the raw output.
 
-[MIT](LICENSE)
+The free tier throws an occasional "service unavailable, high demand" error. The AI node retries itself, 4 tries with 5s waits. Hasn't failed all four for me yet.
+
+If you have a paid OpenAI or Anthropic key you can swap the AI node for one of those, the prompt works as is. gpt-4o-mini works out to about $0.0003 per bill if you're curious.
+
+## adapting it
+
+Same pattern works for anything that arrives by email and belongs in a table: invoices, receipts, order confirmations, bookings. Change the field list in the prompt, match it in the Fields node and the sheet headers. Done.
+
+## license
+
+[MIT](../../LICENSE)

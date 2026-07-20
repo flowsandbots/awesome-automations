@@ -1,29 +1,19 @@
-# 🤖 Automations
+# automations
 
-Open-source automation templates and scripts. Everything here is self-hostable and built to run on free tiers wherever possible.
+n8n workflows and PowerShell scripts I actually use. Everything runs self-hosted and on free tiers where I could manage it.
 
-## 📂 Structure
+This repo started when I moved 200+ scenarios from Make.com to self-hosted n8n. Some of what came out of that migration seemed worth sharing, so I'm cleaning things up and adding them here as I go.
 
-```
-automations/
-├── n8n/          # importable n8n workflow templates
-└── powershell/   # standalone PowerShell scripts
-```
+## n8n workflows
 
-## ⚡ n8n workflows
+Each folder has a workflow.json you can import (n8n > Workflows > Import from file) and a readme with setup steps.
 
-| Workflow | What it does |
-|---|---|
-| [ai-bill-extractor](n8n/ai-bill-extractor/) | Gmail → free AI extraction (Gemma) → Google Sheets. Turns bill/invoice emails into spreadsheet rows automatically. |
+[ai-bill-extractor](n8n/ai-bill-extractor/) watches Gmail for bill emails, pulls out the account number, due date, amount and the bill link with AI, then writes a row to Google Sheets. No parsing rules to maintain, the model reads the email like you would. Runs on the Gemini API free tier so it costs nothing.
 
-**How to use:** each folder contains a `workflow.json` — import it via n8n → Workflows → *Import from File*, then follow the folder's README for credentials and setup.
+## powershell scripts
 
-## 🔧 PowerShell scripts
+[make-blueprint-exporter](powershell/make-blueprint-exporter/) downloads every scenario blueprint in a Make.com team as json files. I wrote it for my own migration. Works fine as a plain backup tool too.
 
-| Script | What it does |
-|---|---|
-| [make-blueprint-exporter](powershell/make-blueprint-exporter/) | Bulk-export every Make.com scenario blueprint as JSON — for backups or migrating to n8n. |
+## license
 
-## License
-
-[MIT](LICENSE) — use freely, attribution appreciated.
+MIT. Do what you want with it, credit is nice but not required.

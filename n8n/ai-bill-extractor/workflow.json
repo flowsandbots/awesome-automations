@@ -11,7 +11,7 @@
     180
    ],
    "parameters": {
-    "content": "## AI Utility Bill Extractor (100% free stack)\nGmail → Gemini AI extraction → Google Sheets. Fully generic — works with any utility/service bill email.\n\n### Setup\n1. **Gmail Trigger**: attach a Gmail OAuth2 credential, then edit the search filter to match your bill emails (e.g. `subject:\"Utility Bill\"` or `from:billing@yourprovider.com`)\n2. **Extract with AI**: get a FREE API key at aistudio.google.com → attach it as a 'Google Gemini(PaLM) Api' credential. Free tier, no card needed\n3. Create a Google Sheet with headers in row 1:\n   `Account_No | Billing_Period | Due_Date | Amount_Due | Bill_URL | Delivered_To`\n   in a tab named `Bills`\n4. **Append to Sheet**: attach a Google Sheets credential and pick your sheet\n5. Test: send yourself a bill-style email, then Execute Workflow",
+    "content": "## AI utility bill extractor\nGmail to Gemini to Google Sheets. Works with any bill email.\n\nSetup:\n1. Gmail Trigger: attach a Gmail OAuth2 credential, then edit the search filter to match your bills (like subject:\"Utility Bill\" or from:billing@yourprovider.com)\n2. Extract with AI: free API key from aistudio.google.com, saved as a Google Gemini(PaLM) Api credential. No card needed\n3. Make a Google Sheet with a tab named Bills and row 1 headers:\n   Account_No | Billing_Period | Due_Date | Amount_Due | Bill_URL | Delivered_To\n4. Append to Sheet: attach a Google Sheets credential and pick that sheet\n5. Send yourself a bill-style email, then hit Execute Workflow\n\nFull walkthrough is in the README next to this file.",
     "width": 420,
     "height": 400,
     "color": 4
