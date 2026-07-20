@@ -12,6 +12,8 @@ Each folder has a workflow.json you can import (n8n > Workflows > Import from fi
 
 [docs-chatbot](n8n/docs-chatbot/) is a chat widget for your website that answers from your own docs. Upload your FAQs through a form, embed one snippet, and visitors get answers grounded in your content. Supabase vector store, OpenRouter free models, Gemini free embeddings. Also fully free to run.
 
+[call-to-hubspot-lead](n8n/call-to-hubspot-lead/) turns an inbound call into a HubSpot lead. Your phone system (3CX, Twilio, whatever can fire a webhook) sends the caller's number, it gets looked up in HubSpot, and either a new deal lands on the existing contact or a fresh contact + deal gets created. Repeat callers don't turn into duplicate contacts.
+
 ## Powershell scripts
 
 [make-blueprint-exporter](powershell/make-blueprint-exporter/) downloads every scenario blueprint in a Make.com team as json files. I wrote it for my own migration. Works fine as a plain backup tool too.
