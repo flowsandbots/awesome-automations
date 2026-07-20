@@ -4,7 +4,7 @@ When a call comes in, this creates the lead in HubSpot for you. Your phone syste
 
 The dedupe matters: a repeat caller doesn't become a duplicate contact, they get a new deal on the record you already have.
 
-## how it works
+## How it works
 
 ```
 phone system --webhook--> n8n
@@ -17,13 +17,13 @@ phone system --webhook--> n8n
          to the contact         then create deal
 ```
 
-## the stack, all free
+## The stack, all free
 
 - n8n, self-hosted or cloud
 - HubSpot free CRM + a free private-app token
 - 3CX (or any phone system that can POST a webhook on a call event)
 
-## setup
+## Setup
 
 ### 1. HubSpot private app
 
@@ -36,15 +36,15 @@ In HubSpot: Settings > Integrations > Private Apps > Create a private app. Give 
 
 Copy the access token.
 
-### 2. import the workflow
+### 2. Import the workflow
 
 n8n > Workflows > Import from file > workflow.json
 
-### 3. credential
+### 3. Credential
 
 On each of the three HTTP nodes (Search contact, Create contact, Create deal), pick a **HubSpot App Token** credential and paste your token. You make the credential once, then select it on the other two.
 
-### 4. point your phone system at it
+### 4. Point your phone system at it
 
 Publish the workflow, open the **Incoming call** node, copy the production webhook URL. In 3CX: Admin > Settings > CRM / webhook integration, set it to fire on inbound call and POST a body like:
 
@@ -54,7 +54,7 @@ Publish the workflow, open the **Incoming call** node, copy the production webho
 
 `caller_name` is optional. 3CX's variable for the caller number goes in `caller_number`. Other PBXs (FreePBX, Twilio, Aircall...) work the same way, just map their call-event fields to `caller_number`.
 
-## testing it (no phone system needed)
+## Testing it (no phone system needed)
 
 This is the part people worry about. You don't need 3CX to test, you just send the same JSON a call would.
 
@@ -77,18 +77,18 @@ curl -X POST https://YOUR-N8N/webhook/inbound-call \
   -d '{"caller_number":"+15557654321","caller_name":"Test Caller"}'
 ```
 
-## customizing
+## Customizing
 
 - The deal is created with just a `dealname`. To drop it into a specific pipeline/stage, add `pipeline` and `dealstage` (their internal IDs) to the properties in both Create deal nodes. Don't add properties you haven't confirmed exist on your account first — HubSpot rejects the whole request if any property name doesn't exist (`PROPERTY_DOESNT_EXIST`), some fields like custom lead-source properties are only on paid tiers or need to be created manually under Settings > Properties first
 - Want a Slack or Google Chat ping on every call too? Add a notification node after each Create deal
 - `hs_lead_status: NEW` on the contact marks it as a fresh lead; remove it if you don't use lead status
 
-## notes
+## Notes
 
 - `associationTypeId: 3` is HubSpot's built-in "deal to contact" link, that's what ties the deal to the caller
 - Matching is by the `phone` property, so store numbers consistently (E.164 like +15551234567 is safest). If your CRM stores them differently, the search won't match and you'll get duplicates
 - Free HubSpot has generous API limits, way more than call volume for most businesses
 
-## license
+## License
 
 [MIT](../../LICENSE)
