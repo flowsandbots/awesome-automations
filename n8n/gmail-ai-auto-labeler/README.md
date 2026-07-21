@@ -19,21 +19,21 @@ I ran Gmail filters for years before this. The problem with filters isn't settin
 
 Runs entirely on free tiers. The classification prompt is tiny (sender, subject, first 1500 chars of the body) so you won't get anywhere near the rate limits with a personal inbox.
 
-## the stack
+## The stack
 
 - n8n, self-hosted or cloud
 - Gmail
 - Google Gemini API on the free tier (Gemma model, no card needed)
 
-## how it works
+## How it works
 
 Gmail Trigger polls for unread mail every minute. Each email goes to Gemini with a prompt that says "reply with exactly one category name". A Switch node routes on the answer, seven branches, and each branch adds the matching Gmail label. That's the whole thing. Five node types.
 
-## setup
+## Setup
 
 About 10 minutes if you already have a Google Cloud project, 20 if not.
 
-### 1. create the labels in Gmail
+### 1. Create the labels in Gmail
 
 In Gmail, Settings > Labels > Create new label. Make all seven:
 
@@ -43,7 +43,7 @@ INVOICE, BANKING, ACTION_REQUIRED, NEWSLETTER, NOTIFICATION, PERSONAL, AI_UNSORT
 
 Do this first. The n8n label dropdowns can only pick labels that already exist.
 
-### 2. import the workflow
+### 2. Import the workflow
 
 n8n > Workflows > Import from file > workflow.json
 
@@ -56,21 +56,21 @@ Skip to step 4 if you already have OAuth credentials from one of my other workfl
 3. OAuth consent screen > External. Add yourself as a test user
 4. Clients > Create client > Web application. Under authorized redirect URIs paste the redirect URL n8n shows in the credential dialog (`https://YOUR-N8N/rest/oauth2-credential/callback`), then copy the client id and secret
 
-### 4. credentials in n8n
+### 4. Credentials in n8n
 
 - Gmail Trigger node: new Gmail OAuth2 credential with the client id/secret, sign in with Google. Click through the "unverified app" warning, it's your own app
 - Classify with AI node: free API key from aistudio.google.com, saved as a Google Gemini(PaLM) API credential
 - The seven Label nodes take the same Gmail credential
 
-### 5. pick the labels
+### 5. Pick the labels
 
 Open each Label node and pick its label from the dropdown (Label: INVOICE gets the INVOICE label and so on). This is the most tedious part of the setup and it's still only seven dropdowns.
 
-### 6. test it
+### 6. Test it
 
 Send yourself an email that looks like a bill, hit Execute Workflow, and watch it land under INVOICE. Then activate the workflow and let it run.
 
-## changing the categories
+## Changing the categories
 
 Two places, keep them in sync:
 
@@ -79,7 +79,7 @@ Two places, keep them in sync:
 
 Then add a Label node for the new branch. The descriptions in the prompt matter more than the names, that's what the model actually routes on. Vague descriptions get you vague sorting.
 
-## notes
+## Notes
 
 - The trigger only looks at unread mail, so your archive won't get reprocessed on the first run
 - If the model returns something weird, the fallback catches it. Check AI_UNSORTED once a week and tune the prompt descriptions if a pattern shows up
