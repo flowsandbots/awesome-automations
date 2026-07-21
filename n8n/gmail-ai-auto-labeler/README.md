@@ -2,6 +2,8 @@
 
 AI reads every email that hits your inbox and files it under one of six labels. No filter rules, no "if sender contains" lists that break the moment a company changes its email domain. The model reads the mail like you would and decides where it goes.
 
+![The labels in Gmail](screenshots/gmail-labels.png)
+
 Categories out of the box:
 
 ```
@@ -26,6 +28,8 @@ Runs entirely on free tiers. The classification prompt is tiny (sender, subject,
 - Google Gemini API on the free tier (Gemma model, no card needed)
 
 ## How it works
+
+![The workflow in n8n](screenshots/workflow-canvas.png)
 
 Gmail Trigger polls for unread mail every minute. Each email goes to Gemini with a prompt that says "reply with exactly one category name". A Switch node routes on the answer, seven branches, and each branch adds the matching Gmail label. That's the whole thing. Five node types.
 
