@@ -1,0 +1,815 @@
+{
+  "name": "Agency Ops Automation Suite",
+  "nodes": [
+    {
+      "id": "s1note",
+      "name": "note_s1note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -260
+      ],
+      "parameters": {
+        "width": 360,
+        "height": 220,
+        "content": "## Section 1 \u2014 Content auto-categorizer\nWhen a new file lands in the watched Drive folder, the AI reads the file name and tags it by client, content type and format. The tag is logged to a Google Sheet. If the name is too vague to place, it is filed as \"Unsorted\" instead of guessed."
+      }
+    },
+    {
+      "id": "s1trigger",
+      "name": "New file in Drive",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        40,
+        40
+      ],
+      "parameters": {
+        "event": "fileCreated",
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Pick your assets folder"
+        },
+        "options": {}
+      },
+      "notes": "Watches one Drive folder for new files. Pick the folder you drop client assets into."
+    },
+    {
+      "id": "s1ai",
+      "name": "Tag the file",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        300,
+        40
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 5000,
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemma-4-26b-a4b-it",
+          "mode": "list",
+          "cachedResultName": "gemma-4-26b-a4b-it"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You sort marketing files for an agency. Read the file name and return ONLY a JSON object with these three keys, nothing else:\n\n{\"client\":\"...\",\"content_type\":\"...\",\"format\":\"...\"}\n\n- client: the client or brand the file belongs to. If you can't tell, use \"Unsorted\".\n- content_type: what kind of content it is (e.g. Reel, Story, Carousel, Blog, Ad, Logo). If unclear, use \"Unsorted\".\n- format: the file format from the extension (e.g. MP4, PNG, PDF). If none, use \"Unknown\".\n\nFile name: {{ $json.name }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "notes": "Free Gemini tier. Vague names come back as Unsorted so nothing gets mis-filed."
+    },
+    {
+      "id": "s1fields",
+      "name": "Read the tags",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        40
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "file_name",
+              "value": "={{ $('New file in Drive').item.json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "client",
+              "value": "={{ JSON.parse($json.content.parts.filter(p => !p.thought).pop().text.match(/\\{[\\s\\S]*\\}/)?.[0] ?? '{}').client ?? 'Unsorted' }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "content_type",
+              "value": "={{ JSON.parse($json.content.parts.filter(p => !p.thought).pop().text.match(/\\{[\\s\\S]*\\}/)?.[0] ?? '{}').content_type ?? 'Unsorted' }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "format",
+              "value": "={{ JSON.parse($json.content.parts.filter(p => !p.thought).pop().text.match(/\\{[\\s\\S]*\\}/)?.[0] ?? '{}').format ?? 'Unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "tagged_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "notes": "Pulls the three tags out of the AI's reply, with safe fallbacks."
+    },
+    {
+      "id": "s1sheet",
+      "name": "Log to tracking sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        820,
+        40
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Pick your tracking sheet"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Assets",
+          "mode": "list",
+          "cachedResultName": "Assets"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": []
+        },
+        "options": {}
+      },
+      "notes": "Appends a row: file_name, client, content_type, format, tagged_at. Header row must match."
+    },
+    {
+      "id": "s2note",
+      "name": "note_s2note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        300
+      ],
+      "parameters": {
+        "width": 360,
+        "height": 220,
+        "content": "## Section 2 \u2014 Weekly client report\nOn a schedule (every Monday by default) the workflow reads a sheet of performance numbers, has the AI write a short plain-English summary that matches how the week actually went, and posts it to Slack. A copy can also be saved to Drive."
+      }
+    },
+    {
+      "id": "s2trigger",
+      "name": "Weekly schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        40,
+        400
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "notes": "Runs every Monday at 9am. Change the day/time here."
+    },
+    {
+      "id": "s2read",
+      "name": "Read performance data",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        300,
+        400
+      ],
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Pick your performance sheet"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Performance",
+          "mode": "list",
+          "cachedResultName": "Performance"
+        },
+        "options": {}
+      },
+      "notes": "Reads the mock metrics sheet (followers, reach, engagement, etc.)."
+    },
+    {
+      "id": "s2ai",
+      "name": "Write the summary",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        560,
+        400
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 5000,
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemma-4-26b-a4b-it",
+          "mode": "list",
+          "cachedResultName": "gemma-4-26b-a4b-it"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You write a short weekly update for a social media client. Below is this week's data as rows. Write 3-4 sentences in plain English that a busy client can read in ten seconds. Match the tone to the numbers: upbeat if things grew, honest and calm if they dipped, matter-of-fact if flat. No bullet points, no raw metric dumps, just the story of the week.\n\nData:\n{{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "notes": "Turns raw numbers into a narrative. Tone should track good/flat/bad weeks."
+    },
+    {
+      "id": "s2fields",
+      "name": "Prep the message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        820,
+        400
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1",
+              "name": "summary",
+              "value": "={{ $json.content.parts.filter(p => !p.thought).pop().text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "notes": "Grabs the AI's summary text."
+    },
+    {
+      "id": "s2slack",
+      "name": "Post report to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1080,
+        320
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Pick a channel"
+        },
+        "text": "=:bar_chart: *{{ $('Read performance data').item.json.Client }} — Weekly report ({{ $('Read performance data').item.json.Week }})*\n\n{{ $json.summary }}",
+        "otherOptions": {}
+      },
+      "notes": "Posts the summary to your chosen channel."
+    },
+    {
+      "id": "s2drive",
+      "name": "Save copy to Drive (optional)",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1080,
+        480
+      ],
+      "parameters": {
+        "operation": "createFromText",
+        "name": "=Weekly report {{ $('Read performance data').item.json.Client }} {{ $('Read performance data').item.json.Week }}.txt",
+        "content": "={{ $json.summary }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Pick a reports folder"
+        },
+        "options": {}
+      },
+      "notes": "Optional. Saves the same summary as a text file in Drive. Delete this node if you don't want a copy."
+    },
+    {
+      "id": "s3note",
+      "name": "note_s3note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        700
+      ],
+      "parameters": {
+        "width": 360,
+        "height": 240,
+        "content": "## Section 3 \u2014 Draft reply, you approve\nA comment or DM arrives on the webhook (this stands in for whatever platform you use). The AI drafts a reply, then sends it to you on Telegram with Approve / Reject buttons. Nothing is ever sent on its own \u2014 the reply only goes out after you tap Approve."
+      }
+    },
+    {
+      "id": "s3trigger",
+      "name": "Incoming message (webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        40,
+        800
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agency-incoming-message",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "notes": "Simulates an incoming comment/DM. POST JSON like {\"author\":\"...\",\"message\":\"...\"}. In production this would be the platform's own webhook/API."
+    },
+    {
+      "id": "s3ai",
+      "name": "Draft a reply",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        300,
+        800
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 5000,
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemma-4-26b-a4b-it",
+          "mode": "list",
+          "cachedResultName": "gemma-4-26b-a4b-it"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a friendly social media manager replying to a comment or DM on behalf of a brand. Write a short, warm, on-brand reply. If it's a pricing question, be helpful but point them to DMs/email for specifics. If it's a complaint, be calm and apologetic and offer to make it right. If it's a compliment, be gracious. Keep it to 1-3 sentences. Reply with ONLY the message text.\n\nFrom: {{ $json.body.author }}\nMessage: {{ $json.body.message }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "notes": "Drafts the reply. Never sends it."
+    },
+    {
+      "id": "s3prep",
+      "name": "Prep the draft",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        800
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "author",
+              "value": "={{ $('Incoming message (webhook)').item.json.body.author }}",
+              "type": "string"
+            },
+            {
+              "id": "c2",
+              "name": "incoming",
+              "value": "={{ $('Incoming message (webhook)').item.json.body.message }}",
+              "type": "string"
+            },
+            {
+              "id": "c3",
+              "name": "draft",
+              "value": "={{ $json.content.parts.filter(p => !p.thought).pop().text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "notes": "Bundles the original message and the AI draft for the approval prompt."
+    },
+    {
+      "id": "s3approve",
+      "name": "Approve on Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        820,
+        800
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "sendAndWait",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "message": "=New message from {{ $json.author }}:\n\"{{ $json.incoming }}\"\n\nDraft reply:\n\"{{ $json.draft }}\"\n\nSend this reply?",
+        "responseType": "approval",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "buttonApprovalLabel": "Approve & send",
+            "buttonDisapprovalLabel": "Reject"
+          }
+        },
+        "options": {}
+      },
+      "notes": "Pauses here until you tap a button in Telegram. Set your chat id (or paste it directly instead of the env variable)."
+    },
+    {
+      "id": "s3if",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1080,
+        800
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond1",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "notes": "True path = you approved. False path = you rejected."
+    },
+    {
+      "id": "s3send",
+      "name": "Send approved reply",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        720
+      ],
+      "parameters": {},
+      "notes": "Placeholder for the real send. Swap in the platform's API/HTTP node here \u2014 it only runs after approval."
+    },
+    {
+      "id": "s3discard",
+      "name": "Discard draft",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        880
+      ],
+      "parameters": {},
+      "notes": "Rejected drafts stop here. Nothing is sent."
+    },
+    {
+      "id": "s4note",
+      "name": "note_s4note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        1120
+      ],
+      "parameters": {
+        "width": 360,
+        "height": 240,
+        "content": "## Section 4 \u2014 New client onboarding\nWhen you add a row to the \"New Clients\" sheet, the workflow sets the client up automatically: it creates their Drive folder, creates a Notion page from your template, and posts a heads-up to the team in Slack. One row in, a fully set-up client out."
+      }
+    },
+    {
+      "id": "s4trigger",
+      "name": "New client row",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        40,
+        1220
+      ],
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Pick your New Clients sheet"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "New Clients",
+          "mode": "list",
+          "cachedResultName": "New Clients"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "notes": "Fires once per new row. Existing rows aren't reprocessed, so re-running won't duplicate."
+    },
+    {
+      "id": "s4folder",
+      "name": "Create Drive folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        300,
+        1220
+      ],
+      "parameters": {
+        "resource": "folder",
+        "operation": "create",
+        "name": "={{ $json['Client Name'] }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Pick the parent clients folder"
+        },
+        "options": {}
+      },
+      "notes": "Creates a folder named after the client inside your Clients folder."
+    },
+    {
+      "id": "s4notion",
+      "name": "Create Notion page",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        1220
+      ],
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "create",
+        "databaseId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Pick your Clients database"
+        },
+        "title": "={{ $('New client row').item.json['Client Name'] }}",
+        "propertiesUi": {
+          "propertyValues": []
+        },
+        "options": {}
+      },
+      "notes": "Creates a client page in your Notion Clients database. Add property mappings as needed."
+    },
+    {
+      "id": "s4slack",
+      "name": "Tell the team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        820,
+        1220
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Pick a channel"
+        },
+        "text": "=:tada: New client onboarded: *{{ $('New client row').item.json['Client Name'] }}*\nDrive folder and Notion page are ready.",
+        "otherOptions": {}
+      },
+      "notes": "Posts a heads-up so the team knows the client is set up."
+    }
+  ],
+  "connections": {
+    "New file in Drive": {
+      "main": [
+        [
+          {
+            "node": "Tag the file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag the file": {
+      "main": [
+        [
+          {
+            "node": "Read the tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read the tags": {
+      "main": [
+        [
+          {
+            "node": "Log to tracking sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly schedule": {
+      "main": [
+        [
+          {
+            "node": "Read performance data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read performance data": {
+      "main": [
+        [
+          {
+            "node": "Write the summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write the summary": {
+      "main": [
+        [
+          {
+            "node": "Prep the message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep the message": {
+      "main": [
+        [
+          {
+            "node": "Post report to Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Save copy to Drive (optional)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Incoming message (webhook)": {
+      "main": [
+        [
+          {
+            "node": "Draft a reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft a reply": {
+      "main": [
+        [
+          {
+            "node": "Prep the draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep the draft": {
+      "main": [
+        [
+          {
+            "node": "Approve on Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve on Telegram": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved?": {
+      "main": [
+        [
+          {
+            "node": "Send approved reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Discard draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New client row": {
+      "main": [
+        [
+          {
+            "node": "Create Drive folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Drive folder": {
+      "main": [
+        [
+          {
+            "node": "Create Notion page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Notion page": {
+      "main": [
+        [
+          {
+            "node": "Tell the team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {}
+}
